@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { JobCountdown } from '../components/JobCountdown';
 
 type Step = 'idle' | 'creating' | 'funding' | 'submitting' | 'confirming' | 'done' | 'revision';
 
@@ -7,6 +8,7 @@ export default function Home() {
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('5');
   const [jobId, setJobId] = useState('');
+  const [expiredAt, setExpiredAt] = useState<bigint>(0n);
   const [step, setStep] = useState<Step>('idle');
   const [loading, setLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
@@ -44,6 +46,7 @@ export default function Home() {
     const data = await res.json();
     setJobId(data.jobId);
     setTxHash(data.txHash);
+    if (data.expiredAt) setExpiredAt(BigInt(data.expiredAt));
     addLog(`Job #${data.jobId} created successfully`);
     setLoading(false);
     setStep('funding');
@@ -112,7 +115,7 @@ export default function Home() {
     setStep('idle'); setLog([]); setJobId('');
     setTxHash(''); setDescription(''); setDeliverable('');
     setDisputeReason(''); setShowDisputeForm(false);
-    setRevisionCount(0);
+    setRevisionCount(0); setExpiredAt(0n);
   };
 
   const progress = { idle:0, creating:20, funding:40, submitting:60, confirming:80, done:100, revision:60 }[step];
@@ -141,7 +144,7 @@ export default function Home() {
 
         <div style={{borderBottom:'1px solid #1e1e2e',padding:'16px 32px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
           <div style={{display:'flex',alignItems:'center',gap:'10px'}}>
-            <div style={{width:'32px',height:'32px',background:'#f5c542',borderRadius:'8px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'16px'}}>⚖️</div>
+            <div style={{width:'32px',height:'32px',background:'#f5c542',borderRadius:'8px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'16px'}}>⚡</div>
             <span style={{fontWeight:'800',fontSize:'18px',letterSpacing:'-0.5px'}}>Settle</span>
           </div>
           <div style={{display:'flex',alignItems:'center',gap:'8px',background:'#13131a',border:'1px solid #1e1e2e',borderRadius:'8px',padding:'6px 12px'}}>
@@ -206,7 +209,7 @@ export default function Home() {
                 </div>
                 <button onClick={handleCreateJob} disabled={!description||loading}
                   style={{width:'100%',padding:'16px',background:'#f5c542',border:'none',borderRadius:'12px',fontWeight:'800',fontSize:'16px',color:'#0a0a0f',cursor:'pointer',opacity:!description?0.4:1}}>
-                  {loading ? <><Spinner/>Creating job<Dots/></> : 'Create Job & Lock USDC →'}
+                  {loading ? <><Spinner/>Creating job<Dots/></> : 'Create Job & Lock USDC ⚡'}
                 </button>
               </>
             )}
@@ -217,9 +220,17 @@ export default function Home() {
                   <div style={{background:'rgba(59,130,246,0.1)',border:'1px solid rgba(59,130,246,0.3)',borderRadius:'8px',padding:'4px 10px',fontSize:'12px',color:'#60a5fa',fontWeight:'600'}}>Job #{jobId}</div>
                   <div style={{background:'rgba(74,222,128,0.1)',border:'1px solid rgba(74,222,128,0.3)',borderRadius:'8px',padding:'4px 10px',fontSize:'12px',color:'#4ade80',fontWeight:'600'}}>✓ Created</div>
                 </div>
+
+                {expiredAt > 0n && (
+                  <div style={{marginBottom:'20px',padding:'16px',background:'#0a0a0f',borderRadius:'12px',border:'1px solid #1e1e2e'}}>
+                    <p style={{fontSize:'12px',color:'#6b6b7a',marginBottom:'8px'}}>⏳ Time remaining</p>
+                    <JobCountdown expiredAt={expiredAt} />
+                  </div>
+                )}
+
                 <p style={{color:'#6b6b7a',marginBottom:'4px',fontSize:'13px'}}>Description</p>
                 <p style={{fontWeight:'600',marginBottom:'20px',fontSize:'15px'}}>{description}</p>
-                <div style={{background:'#0a0a0f',borderRadius:'12px',padding:'16px',marginBottom:'16px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                <div style={{background:'#0a0a0f',padding:'16px',marginBottom:'16px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
                   <span style={{color:'#6b6b7a',fontSize:'14px'}}>Amount to lock</span>
                   <span style={{fontWeight:'800',fontSize:'20px',color:'#f5c542'}}>{amount} USDC</span>
                 </div>
@@ -251,25 +262,21 @@ export default function Home() {
                     <div style={{background:'rgba(249,115,22,0.1)',border:'1px solid rgba(249,115,22,0.3)',borderRadius:'8px',padding:'4px 10px',fontSize:'12px',color:'#f97316',fontWeight:'600'}}>🔄 Revision #{revisionCount}</div>
                   )}
                 </div>
-
                 {step === 'revision' && disputeReason && (
                   <div style={{background:'rgba(249,115,22,0.08)',border:'1px solid rgba(249,115,22,0.3)',borderRadius:'12px',padding:'14px 16px',marginBottom:'20px'}}>
-                    <p style={{fontSize:'11px',color:'#f97316',fontWeight:'700',letterSpacing:'1px',textTransform:'uppercase',marginBottom:'6px'}}>⚠️ Client Feedback</p>
+                    <p style={{fontSize:'11px',color:'#f97316',fontWeight:'700',letterSpacing:'1px',textTransform:'uppercase',marginBottom:'6px'}}>💬 Client Feedback</p>
                     <p style={{fontSize:'13px',color:'#fed7aa',lineHeight:'1.5'}}>{disputeReason}</p>
                   </div>
                 )}
-
-                <div style={{background:'rgba(245,197,66,0.05)',border:'1px solid rgba(245,197,66,0.2)',borderRadius:'12px',padding:'12px 16px',marginBottom:'20px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                <div style={{background:'rgba(245,197,66,0.05)',border:'1px solid rgba(245,197,66,0.2)',borderRadius:'10px',padding:'12px 16px',marginBottom:'20px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
                   <span style={{color:'#6b6b7a',fontSize:'13px'}}>Locked in escrow</span>
                   <span style={{fontWeight:'800',fontSize:'18px',color:'#f5c542'}}>{amount} USDC</span>
                 </div>
-
                 <div style={{background:step==='revision'?'rgba(249,115,22,0.05)':'rgba(96,165,250,0.05)',border:`1px solid ${step==='revision'?'rgba(249,115,22,0.2)':'rgba(96,165,250,0.2)'}`,borderRadius:'10px',padding:'10px 14px',marginBottom:'20px'}}>
                   <span style={{fontSize:'12px',color:step==='revision'?'#f97316':'#60a5fa',fontWeight:'600'}}>
-                    {step==='revision' ? '🔄 PROVIDER — Please revise and resubmit' : '👷 PROVIDER ACTION REQUIRED'}
+                    {step==='revision' ? '🔄 PROVIDER — Please revise and resubmit' : '📤 PROVIDER ACTION REQUIRED'}
                   </span>
                 </div>
-
                 <label style={{fontSize:'12px',color:'#6b6b7a',fontWeight:'600',letterSpacing:'1px',textTransform:'uppercase',display:'block',marginBottom:'8px'}}>
                   {step==='revision' ? 'Revised Deliverable' : 'Deliverable'}
                 </label>
@@ -314,7 +321,7 @@ export default function Home() {
                 {deliverable.startsWith('📎') && <div style={{marginBottom:'16px'}}/>}
                 <button onClick={handleSubmitWork} disabled={!deliverable||loading}
                   style={{width:'100%',padding:'16px',background:loading?'#2a2a1a':step==='revision'?'#f97316':'#60a5fa',border:loading?`1px solid ${step==='revision'?'#f97316':'#60a5fa'}`:'none',borderRadius:'12px',fontWeight:'800',fontSize:'15px',color:loading?step==='revision'?'#f97316':'#60a5fa':'#0a0a0f',cursor:!deliverable||loading?'not-allowed':'pointer',opacity:!deliverable?0.4:1}}>
-                  {loading ? <><Spinner/>Submitting work<Dots/></> : step==='revision' ? '🔄 Resubmit Revised Work' : '📦 Submit Work'}
+                  {loading ? <><Spinner/>Submitting work<Dots/></> : step==='revision' ? '🔄 Resubmit Revised Work' : '📤 Submit Work'}
                 </button>
               </>
             )}
@@ -323,7 +330,7 @@ export default function Home() {
               <>
                 <div style={{display:'flex',gap:'8px',marginBottom:'20px',flexWrap:'wrap'}}>
                   <div style={{background:'rgba(74,222,128,0.1)',border:'1px solid rgba(74,222,128,0.3)',borderRadius:'8px',padding:'4px 10px',fontSize:'12px',color:'#4ade80',fontWeight:'600'}}>Job #{jobId}</div>
-                  <div style={{background:'rgba(96,165,250,0.1)',border:'1px solid rgba(96,165,250,0.3)',borderRadius:'8px',padding:'4px 10px',fontSize:'12px',color:'#60a5fa',fontWeight:'600'}}>📦 Submitted</div>
+                  <div style={{background:'rgba(96,165,250,0.1)',border:'1px solid rgba(96,165,250,0.3)',borderRadius:'8px',padding:'4px 10px',fontSize:'12px',color:'#60a5fa',fontWeight:'600'}}>📤 Submitted</div>
                   {revisionCount > 0 && (
                     <div style={{background:'rgba(249,115,22,0.1)',border:'1px solid rgba(249,115,22,0.3)',borderRadius:'8px',padding:'4px 10px',fontSize:'12px',color:'#f97316',fontWeight:'600'}}>🔄 Revision #{revisionCount}</div>
                   )}
@@ -338,23 +345,19 @@ export default function Home() {
                   <span style={{fontWeight:'800',fontSize:'20px',color:'#f5c542'}}>{amount} USDC</span>
                 </div>
                 <p style={{color:'#6b6b7a',fontSize:'13px',marginBottom:'16px',lineHeight:'1.6'}}>Review the deliverable above. If satisfied, confirm to release payment.</p>
-
                 <button onClick={handleConfirm} disabled={loading||showDisputeForm}
                   style={{width:'100%',padding:'16px',background:loading?'#1a2a1a':'#4ade80',border:loading?'1px solid #4ade80':'none',borderRadius:'12px',fontWeight:'800',fontSize:'15px',color:loading?'#4ade80':'#0a0a0f',cursor:loading||showDisputeForm?'not-allowed':'pointer',opacity:showDisputeForm?0.4:1,marginBottom:'10px'}}>
                   {loading ? <><Spinner/>Releasing payment<Dots/></> : '✅ Confirm & Release Payment'}
                 </button>
-
                 {!showDisputeForm && (
-                  <button onClick={() => setShowDisputeForm(true)} disabled={loading}
-                    className="dispute-btn"
+                  <button onClick={() => setShowDisputeForm(true)} disabled={loading} className="dispute-btn"
                     style={{width:'100%',padding:'12px',background:'rgba(239,68,68,0.08)',border:'1px solid rgba(239,68,68,0.3)',borderRadius:'12px',fontWeight:'700',fontSize:'14px',color:'#ef4444',cursor:'pointer',transition:'all 0.2s'}}>
                     ⚠️ Raise Dispute
                   </button>
                 )}
-
                 {showDisputeForm && (
                   <div style={{background:'rgba(239,68,68,0.05)',border:'1px solid rgba(239,68,68,0.3)',borderRadius:'12px',padding:'16px',marginTop:'4px'}}>
-                    <p style={{fontSize:'13px',color:'#ef4444',fontWeight:'600',marginBottom:'10px'}}>⚠️ Describe the issue for provider to fix</p>
+                    <p style={{fontSize:'13px',color:'#ef4444',fontWeight:'600',marginBottom:'10px'}}>💬 Describe the issue for provider to fix</p>
                     <textarea
                       style={{width:'100%',background:'#0a0a0f',border:'1px solid rgba(239,68,68,0.3)',borderRadius:'8px',padding:'10px 14px',color:'#f0eeea',fontSize:'14px',outline:'none',boxSizing:'border-box',resize:'vertical',minHeight:'80px',fontFamily:'system-ui,sans-serif',marginBottom:'10px'}}
                       placeholder="e.g. Work quality does not match requirements, wrong deliverable..."
@@ -387,7 +390,7 @@ export default function Home() {
                 {txHash && (
                   <a href={`https://testnet.arcscan.app/tx/${txHash}`} target="_blank"
                     style={{display:'block',background:'rgba(245,197,66,0.1)',border:'1px solid rgba(245,197,66,0.3)',borderRadius:'10px',padding:'12px',color:'#f5c542',textDecoration:'none',fontSize:'13px',marginBottom:'16px'}}>
-                    View transaction on Arc Explorer →
+                    View transaction on Arc Explorer ↗
                   </a>
                 )}
                 <button onClick={reset}

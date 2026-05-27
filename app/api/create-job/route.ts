@@ -19,7 +19,7 @@ export async function POST(req: Request) {
   const { description } = await req.json();
 
   const now = await publicClient.getBlock();
-  const expiredAt = now.timestamp + 3600n;
+  const expiredAt = now.timestamp + 86400n;
 
   const tx = await circle.createContractExecutionTransaction({
     walletAddress: process.env.CLIENT_WALLET_ADDRESS!,
@@ -36,7 +36,6 @@ export async function POST(req: Request) {
     fee: { type: 'level', config: { feeLevel: 'MEDIUM' } },
   });
 
-  // Chờ transaction xong
   let txHash = '';
   for (let i = 0; i < 30; i++) {
     await new Promise(r => setTimeout(r, 2000));
@@ -49,7 +48,6 @@ export async function POST(req: Request) {
     if (state === 'FAILED') return NextResponse.json({ error: 'Failed' }, { status: 500 });
   }
 
-  // Lấy Job ID
   const receipt = await publicClient.getTransactionReceipt({ hash: txHash as `0x${string}` });
   const abi = [{
     type: 'event', name: 'JobCreated',
@@ -72,5 +70,5 @@ export async function POST(req: Request) {
     } catch {}
   }
 
-  return NextResponse.json({ jobId, txHash });
+  return NextResponse.json({ jobId, txHash, expiredAt: expiredAt.toString() });
 }
