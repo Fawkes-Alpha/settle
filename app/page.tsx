@@ -19,6 +19,7 @@ export default function Home() {
   const [showDisputeForm, setShowDisputeForm] = useState(false);
   const [revisionCount, setRevisionCount] = useState(0);
   const [secondsLeft, setSecondsLeft] = useState(0);
+  const [copiedLink, setCopiedLink] = useState(false);
 
   const addLog = (msg: string) => setLog(prev => [...prev, msg]);
 
@@ -148,12 +149,21 @@ export default function Home() {
     setTxHash(''); setDescription(''); setDeliverable('');
     setDisputeReason(''); setShowDisputeForm(false);
     setRevisionCount(0); setExpiredAt(0n); setSecondsLeft(0);
+    setCopiedLink(false);
   };
 
   const progress = { idle:0, creating:20, funding:40, submitting:60, confirming:80, done:100, revision:60, expired:0 }[step];
 
   const isUrgent = secondsLeft > 0 && secondsLeft < 7200;
   const isCritical = secondsLeft > 0 && secondsLeft < 1800;
+
+  const jobUrl = typeof window !== 'undefined' ? `${window.location.origin}/jobs/${jobId}` : `/jobs/${jobId}`;
+
+  const copyJobLink = () => {
+    navigator.clipboard.writeText(jobUrl);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2000);
+  };
 
   const DeadlineBanner = () => {
     if (expiredAt === 0n) return null;
@@ -283,10 +293,22 @@ export default function Home() {
 
             {step === 'funding' && (
               <>
-                <div style={{display:'flex',alignItems:'center',gap:'10px',marginBottom:'20px'}}>
+                <div style={{display:'flex',alignItems:'center',gap:'10px',marginBottom:'16px'}}>
                   <div style={{background:'rgba(59,130,246,0.1)',border:'1px solid rgba(59,130,246,0.3)',borderRadius:'8px',padding:'4px 10px',fontSize:'12px',color:'#60a5fa',fontWeight:'600'}}>Job #{jobId}</div>
                   <div style={{background:'rgba(74,222,128,0.1)',border:'1px solid rgba(74,222,128,0.3)',borderRadius:'8px',padding:'4px 10px',fontSize:'12px',color:'#4ade80',fontWeight:'600'}}>✓ Created</div>
                 </div>
+
+                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'16px',padding:'12px 16px',background:'rgba(74,222,128,0.05)',border:'1px solid rgba(74,222,128,0.2)',borderRadius:'12px'}}>
+                  <div>
+                    <p style={{fontSize:'12px',color:'#4ade80',fontWeight:'700',margin:0}}>✓ Share this job</p>
+                    <p style={{fontSize:'11px',color:'#6b6b7a',margin:'2px 0 0',wordBreak:'break-all'}}>{jobUrl}</p>
+                  </div>
+                  <button onClick={copyJobLink}
+                    style={{marginLeft:'12px',padding:'8px 14px',background:copiedLink?'rgba(74,222,128,0.2)':'#13131a',border:`1px solid ${copiedLink?'rgba(74,222,128,0.4)':'#1e1e2e'}`,borderRadius:'8px',color:copiedLink?'#4ade80':'#6b6b7a',fontSize:'12px',fontWeight:'600',cursor:'pointer',whiteSpace:'nowrap',flexShrink:0}}>
+                    {copiedLink ? '✓ Copied!' : '🔗 Copy Link'}
+                  </button>
+                </div>
+
                 {expiredAt > 0n && (
                   <div style={{marginBottom:'20px',padding:'16px',background:'#0a0a0f',borderRadius:'12px',border:'1px solid #1e1e2e'}}>
                     <p style={{fontSize:'12px',color:'#6b6b7a',marginBottom:'8px'}}>⏳ Time remaining</p>
